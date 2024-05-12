@@ -5,3 +5,6 @@ version = "0.1.0"
 authors = ["Arthur Damasceno <damascenoarthur653@gmail.com>"]
 license = "MIT"
 edition = "2021"
+
+[dependencies]
+tokio = { version = "1.37.0", features = ["net", "macros", "rt-multi-thread"] }
