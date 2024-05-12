@@ -1,3 +1,4 @@
+mod database;
 mod protocol;
 mod server;
 
