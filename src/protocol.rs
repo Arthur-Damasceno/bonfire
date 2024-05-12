@@ -5,7 +5,7 @@ pub enum Request {
     Ping,
     Get(Vec<u8>),
     Insert(Vec<u8>, Vec<u8>),
-    Delete(Vec<u8>)
+    Delete(Vec<u8>),
 }
 
 impl Request {

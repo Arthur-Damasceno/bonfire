@@ -1,6 +1,9 @@
 use tokio::net::{TcpListener, ToSocketAddrs};
 
-use crate::{protocol::Connection, database::Database};
+use crate::{
+    database::Database,
+    protocol::{Connection, Request},
+};
 
 pub struct Server {
     listener: TcpListener,
@@ -11,7 +14,10 @@ impl Server {
     pub async fn bind(addr: impl ToSocketAddrs) -> crate::Result<Self> {
         let listener = TcpListener::bind(addr).await?;
 
-        Ok(Self { listener, database: Database::default() })
+        Ok(Self {
+            listener,
+            database: Database::default(),
+        })
     }
 
     pub async fn start(&self) -> crate::Result {
@@ -20,11 +26,30 @@ impl Server {
 
             println!("Accepted connection from {addr}");
 
-            tokio::spawn(async {
+            let database = self.database.clone();
+
+            tokio::spawn(async move {
                 let mut connection = Connection::new(stream);
 
                 while let Ok(request) = connection.accept().await {
-                    println!("{request:?}");
+                    match request {
+                        Request::Ping => println!("Ping!"),
+                        Request::Get(key) => {
+                            let value = database.get(&key);
+
+                            println!("Get {key:?} = {value:?}");
+                        }
+                        Request::Insert(key, value) => {
+                            println!("Insert {key:?} = {value:?}");
+
+                            database.insert(key, value);
+                        }
+                        Request::Delete(key) => {
+                            if database.delete(&key) {
+                                println!("{key:?} deleted");
+                            }
+                        }
+                    }
                 }
             });
         }
