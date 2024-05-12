@@ -1,8 +1,10 @@
 use tokio::net::{TcpListener, ToSocketAddrs};
 
+use crate::protocol::Connection;
+
 #[derive(Debug)]
 pub struct Server {
-    listener: TcpListener
+    listener: TcpListener,
 }
 
 impl Server {
@@ -12,11 +14,19 @@ impl Server {
         Ok(Self { listener })
     }
 
-    pub async fn accept(&self) -> crate::Result {
-        let (_, addr) = self.listener.accept().await?;
+    pub async fn start(&self) -> crate::Result {
+        loop {
+            let (stream, addr) = self.listener.accept().await?;
 
-        println!("Accepted request from {addr}");
+            println!("Accepted connection from {addr}");
 
-        Ok(())
+            tokio::spawn(async {
+                let mut connection = Connection::new(stream);
+
+                while let Ok(request) = connection.accept().await {
+                    println!("{request:?}");
+                }
+            });
+        }
     }
 }
