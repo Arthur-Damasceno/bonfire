@@ -1,17 +1,17 @@
 use tokio::net::{TcpListener, ToSocketAddrs};
 
-use crate::protocol::Connection;
+use crate::{protocol::Connection, database::Database};
 
-#[derive(Debug)]
 pub struct Server {
     listener: TcpListener,
+    database: Database,
 }
 
 impl Server {
     pub async fn bind(addr: impl ToSocketAddrs) -> crate::Result<Self> {
         let listener = TcpListener::bind(addr).await?;
 
-        Ok(Self { listener })
+        Ok(Self { listener, database: Database::default() })
     }
 
     pub async fn start(&self) -> crate::Result {
