@@ -39,20 +39,27 @@ impl Server {
                             let _ = connection.respond(Response::Pong).await;
                         }
                         Request::Get(key) => {
-                            let value = database.get(&key);
+                            let response = {
+                                if let Some(data) = database.get(&key) {
+                                    Response::Get(data)
+                                } else {
+                                    Response::NotFound
+                                }
+                            };
 
-                            let _ = connection.respond(Response::Get(value)).await;
+                            let _ = connection.respond(response).await;
                         }
                         Request::Set(key, value) => {
                             database.set(key, value);
 
-                            let _ = connection.respond(Response::Set).await;
+                            let _ = connection.respond(Response::Ok).await;
                         }
                         Request::Delete(key) => {
-                            let deleted = database.delete(&key);
+                                let response = if database.delete(&key) {Response::Ok} else {Response::NotFound};
 
-                            let _ = connection.respond(Response::Delete(deleted)).await;
+                            let _ = connection.respond(response).await;
                         }
+                        _ => todo!()
                     }
                 }
             });

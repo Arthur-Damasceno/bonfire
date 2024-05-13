@@ -27,23 +27,23 @@ impl Request {
 #[derive(Debug, Clone)]
 pub enum Response {
     Pong,
-    Get(Option<Vec<u8>>),
-    Set,
-    Delete(bool),
+    Ok,
+    NotFound,
+    Get(Vec<u8>),
 }
 
 impl Response {
     pub const PONG: u8 = 0;
-    pub const GET: u8 = 1;
-    pub const SET: u8 = 2;
-    pub const DELETE: u8 = 3;
+    pub const OK: u8 = 1;
+    pub const NOT_FOUND: u8 = 2;
+    pub const GET: u8 = 3;
 
     pub fn kind(&self) -> u8 {
         match self {
             Self::Pong => Self::PONG,
-            Self::Get(_) => Self::GET,
-            Self::Set => Self::SET,
-            Self::Delete(_) => Self::DELETE,
+            Self::Ok => Self::OK,
+            Self::NotFound => Self::NOT_FOUND,
+            Self::Get(_) => Self::GET
         }
     }
 }
@@ -117,17 +117,9 @@ impl Connection {
         self.stream.write_u8(response.kind()).await?;
 
         match response {
-            Response::Get(ref data) => {
-                let len = data.as_ref().map(|data| data.len()).unwrap_or_default();
-
-                self.stream.write_u32(len as u32).await?;
-
-                if let Some(data) = data {
-                    self.stream.write_all(&data).await?;
-                }
-            }
-            Response::Delete(deleted) => {
-                self.stream.write_u8(deleted as u8).await?;
+            Response::Get(data) => {
+                self.stream.write_u32(data.len() as u32).await?;
+                self.stream.write_all(&data).await?;
             }
             _ => {}
         }
