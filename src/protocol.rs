@@ -1,4 +1,4 @@
-use tokio::{io::AsyncReadExt, net::TcpStream};
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -13,6 +13,30 @@ impl Request {
     pub const GET: u8 = 1;
     pub const INSERT: u8 = 2;
     pub const DELETE: u8 = 3;
+}
+
+#[derive(Debug, Clone)]
+pub enum Response {
+    Pong,
+    Get(Option<Vec<u8>>),
+    Insert,
+    Delete(bool),
+}
+
+impl Response {
+    pub const PONG: u8 = 0;
+    pub const GET: u8 = 1;
+    pub const INSERT: u8 = 2;
+    pub const DELETE: u8 = 3;
+
+    pub fn kind(&self) -> u8 {
+        match self {
+            Self::Pong => Self::PONG,
+            Self::Get(_) => Self::GET,
+            Self::Insert => Self::INSERT,
+            Self::Delete(_) => Self::DELETE,
+        }
+    }
 }
 
 pub struct Connection {
@@ -59,5 +83,27 @@ impl Connection {
             }
             _ => todo!(),
         }
+    }
+
+    pub async fn respond(&mut self, response: Response) -> crate::Result {
+        self.stream.write_u8(response.kind()).await?;
+
+        match response {
+            Response::Get(ref data) => {
+                let len = data.as_ref().map(|data| data.len()).unwrap_or_default();
+
+                self.stream.write_u32(len as u32).await?;
+
+                if let Some(data) = data {
+                    self.stream.write_all(&data).await?;
+                }
+            }
+            Response::Delete(deleted) => {
+                self.stream.write_u8(deleted as u8).await?;
+            }
+            _ => {}
+        }
+
+        Ok(())
     }
 }

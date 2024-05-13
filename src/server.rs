@@ -2,7 +2,7 @@ use tokio::net::{TcpListener, ToSocketAddrs};
 
 use crate::{
     database::Database,
-    protocol::{Connection, Request},
+    protocol::{Connection, Request, Response},
 };
 
 pub struct Server {
@@ -33,21 +33,23 @@ impl Server {
 
                 while let Ok(request) = connection.accept().await {
                     match request {
-                        Request::Ping => println!("Ping!"),
+                        Request::Ping => {
+                            let _ = connection.respond(Response::Pong).await;             
+                        }
                         Request::Get(key) => {
                             let value = database.get(&key);
 
-                            println!("Get {key:?} = {value:?}");
+                            let _ = connection.respond(Response::Get(value)).await;
                         }
                         Request::Insert(key, value) => {
-                            println!("Insert {key:?} = {value:?}");
-
                             database.insert(key, value);
+
+                            let _ = connection.respond(Response::Insert).await;
                         }
                         Request::Delete(key) => {
-                            if database.delete(&key) {
-                                println!("{key:?} deleted");
-                            }
+                            let deleted = database.delete(&key);
+
+                            let _ = connection.respond(Response::Delete(deleted)).await;
                         }
                     }
                 }
