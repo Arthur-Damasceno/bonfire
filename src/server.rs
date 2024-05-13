@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use tokio::net::{TcpListener, ToSocketAddrs};
 
 use crate::{
@@ -7,7 +9,7 @@ use crate::{
 
 pub struct Server {
     listener: TcpListener,
-    database: Database,
+    database: Arc<Database>,
 }
 
 impl Server {
@@ -16,7 +18,7 @@ impl Server {
 
         Ok(Self {
             listener,
-            database: Database::default(),
+            database: Default::default(),
         })
     }
 
@@ -34,7 +36,7 @@ impl Server {
                 while let Ok(request) = connection.accept().await {
                     match request {
                         Request::Ping => {
-                            let _ = connection.respond(Response::Pong).await;             
+                            let _ = connection.respond(Response::Pong).await;
                         }
                         Request::Get(key) => {
                             let value = database.get(&key);
