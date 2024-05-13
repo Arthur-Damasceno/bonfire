@@ -4,14 +4,14 @@ use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
 pub enum Request {
     Ping,
     Get(Vec<u8>),
-    Insert(Vec<u8>, Vec<u8>),
+    Set(Vec<u8>, Vec<u8>),
     Delete(Vec<u8>),
 }
 
 impl Request {
     pub const PING: u8 = 0;
     pub const GET: u8 = 1;
-    pub const INSERT: u8 = 2;
+    pub const SET: u8 = 2;
     pub const DELETE: u8 = 3;
 }
 
@@ -19,21 +19,21 @@ impl Request {
 pub enum Response {
     Pong,
     Get(Option<Vec<u8>>),
-    Insert,
+    Set,
     Delete(bool),
 }
 
 impl Response {
     pub const PONG: u8 = 0;
     pub const GET: u8 = 1;
-    pub const INSERT: u8 = 2;
+    pub const SET: u8 = 2;
     pub const DELETE: u8 = 3;
 
     pub fn kind(&self) -> u8 {
         match self {
             Self::Pong => Self::PONG,
             Self::Get(_) => Self::GET,
-            Self::Insert => Self::INSERT,
+            Self::Set => Self::SET,
             Self::Delete(_) => Self::DELETE,
         }
     }
@@ -61,7 +61,7 @@ impl Connection {
 
                 Ok(Request::Get(key))
             }
-            Request::INSERT => {
+            Request::SET => {
                 let key_len = self.stream.read_u16().await? as usize;
                 let value_len = self.stream.read_u32().await? as usize;
 
@@ -71,7 +71,7 @@ impl Connection {
                 self.stream.read_exact(&mut key).await?;
                 self.stream.read_exact(&mut value).await?;
 
-                Ok(Request::Insert(key, value))
+                Ok(Request::Set(key, value))
             }
             Request::DELETE => {
                 let len = self.stream.read_u16().await? as usize;

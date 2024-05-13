@@ -13,7 +13,7 @@ impl Database {
         self.0.read().unwrap().get(key).map(|x| x.clone())
     }
 
-    pub fn insert(&self, key: Vec<u8>, value: Vec<u8>) {
+    pub fn set(&self, key: Vec<u8>, value: Vec<u8>) {
         self.0.write().unwrap().insert(key, value);
     }
 

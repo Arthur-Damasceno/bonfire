@@ -41,10 +41,10 @@ impl Server {
 
                             let _ = connection.respond(Response::Get(value)).await;
                         }
-                        Request::Insert(key, value) => {
-                            database.insert(key, value);
+                        Request::Set(key, value) => {
+                            database.set(key, value);
 
-                            let _ = connection.respond(Response::Insert).await;
+                            let _ = connection.respond(Response::Set).await;
                         }
                         Request::Delete(key) => {
                             let deleted = database.delete(&key);
