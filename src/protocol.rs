@@ -9,6 +9,9 @@ pub enum Request {
     Get(Vec<u8>),
     Set(Vec<u8>, Vec<u8>),
     Delete(Vec<u8>),
+    Publish(u32, Vec<u8>),
+    Subscribe(u32),
+    Unsubscribe(u32),
 }
 
 impl Request {
@@ -16,6 +19,9 @@ impl Request {
     pub const GET: u8 = 1;
     pub const SET: u8 = 2;
     pub const DELETE: u8 = 3;
+    pub const PUBLISH: u8 = 4;
+    pub const SUBSCRIBE: u8 = 5;
+    pub const UNSUBSCRIBE: u8 = 6;
 }
 
 #[derive(Debug, Clone)]
@@ -84,7 +90,26 @@ impl Connection {
 
                 Ok(Request::Delete(key))
             }
-            _ => todo!(),
+            Request::PUBLISH => {
+                let id = self.stream.read_u32().await?;
+                let len = self.stream.read_u32().await? as usize;
+                let mut message = vec![0; len];                
+
+                self.stream.read_exact(&mut message).await?;
+
+                Ok(Request::Publish(id, message))
+            }
+            Request::SUBSCRIBE => {
+                let id = self.stream.read_u32().await?;
+
+                Ok(Request::Subscribe(id))
+            },
+            Request::UNSUBSCRIBE => {
+                let id = self.stream.read_u32().await?;
+
+                Ok(Request::Unsubscribe(id))
+            },
+            _ => todo!()
         }
     }
 
