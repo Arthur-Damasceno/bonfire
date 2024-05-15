@@ -30,6 +30,7 @@ pub enum Response {
     Ok,
     NotFound,
     Get(Vec<u8>),
+    Message(Vec<u8>),
 }
 
 impl Response {
@@ -37,13 +38,15 @@ impl Response {
     pub const OK: u8 = 1;
     pub const NOT_FOUND: u8 = 2;
     pub const GET: u8 = 3;
+    pub const MESSAGE: u8 = 4;
 
     pub fn kind(&self) -> u8 {
         match self {
             Self::Pong => Self::PONG,
             Self::Ok => Self::OK,
             Self::NotFound => Self::NOT_FOUND,
-            Self::Get(_) => Self::GET
+            Self::Get(_) => Self::GET,
+            Self::Message(_) => Self::MESSAGE
         }
     }
 }
@@ -117,7 +120,7 @@ impl Connection {
         self.stream.write_u8(response.kind()).await?;
 
         match response {
-            Response::Get(data) => {
+            Response::Get(data) | Response::Message(data) => {
                 self.stream.write_u32(data.len() as u32).await?;
                 self.stream.write_all(&data).await?;
             }
