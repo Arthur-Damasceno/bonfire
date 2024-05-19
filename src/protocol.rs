@@ -46,7 +46,7 @@ impl Response {
             Self::Ok => Self::OK,
             Self::NotFound => Self::NOT_FOUND,
             Self::Get(_) => Self::GET,
-            Self::Message(_) => Self::MESSAGE
+            Self::Message(_) => Self::MESSAGE,
         }
     }
 }
@@ -96,7 +96,7 @@ impl Connection {
             Request::PUBLISH => {
                 let id = self.stream.read_u32().await?;
                 let len = self.stream.read_u32().await? as usize;
-                let mut message = vec![0; len];                
+                let mut message = vec![0; len];
 
                 self.stream.read_exact(&mut message).await?;
 
@@ -106,25 +106,22 @@ impl Connection {
                 let id = self.stream.read_u32().await?;
 
                 Ok(Request::Subscribe(id))
-            },
+            }
             Request::UNSUBSCRIBE => {
                 let id = self.stream.read_u32().await?;
 
                 Ok(Request::Unsubscribe(id))
-            },
-            _ => todo!()
+            }
+            _ => todo!(),
         }
     }
 
     pub async fn respond(&mut self, response: Response) -> crate::Result {
         self.stream.write_u8(response.kind()).await?;
 
-        match response {
-            Response::Get(data) | Response::Message(data) => {
-                self.stream.write_u32(data.len() as u32).await?;
-                self.stream.write_all(&data).await?;
-            }
-            _ => {}
+        if let Response::Get(data) | Response::Message(data) = response {
+            self.stream.write_u32(data.len() as u32).await?;
+            self.stream.write_all(&data).await?;
         }
 
         Ok(())

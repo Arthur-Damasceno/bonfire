@@ -33,9 +33,13 @@ impl Database {
     }
 
     pub fn subscribe(&self, id: u32) -> Receiver<Vec<u8>> {
-        if let Some(tx) = self.channels.read().unwrap().get(&id) {
+        let channels = self.channels.read().unwrap();
+
+        if let Some(tx) = channels.get(&id) {
             tx.subscribe()
         } else {
+            drop(channels);
+
             let (tx, rx) = channel(1_000);
 
             self.channels.write().unwrap().insert(id, tx);

@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use tokio::net::{TcpListener, ToSocketAddrs};
+use tokio::{
+    net::{TcpListener, ToSocketAddrs},
+    select,
+    sync::broadcast::Receiver,
+};
 
 use crate::{
     database::Database,
@@ -32,37 +36,89 @@ impl Server {
 
             tokio::spawn(async move {
                 let mut connection = Connection::new(stream);
+                let mut channel: Channel = None;
 
-                while let Ok(request) = connection.accept().await {
-                    match request {
-                        Request::Ping => {
-                            let _ = connection.respond(Response::Pong).await;
-                        }
-                        Request::Get(key) => {
-                            let response = {
-                                if let Some(data) = database.get(&key) {
-                                    Response::Get(data)
+                loop {
+                    if channel.is_some() {
+                        select! {
+                            request = connection.accept() => {
+                                if let Ok(request) = request {
+                                    Self::handle_request(request, &mut connection, &database, &mut channel).await;
                                 } else {
-                                    Response::NotFound
+                                    break;
                                 }
-                            };
-
-                            let _ = connection.respond(response).await;
+                            }
+                            message = channel.as_mut().unwrap().recv() => {
+                                if let Ok(message) = message {
+                                    if connection.respond(Response::Message(message)).await.is_err() {
+                                        break;
+                                    }
+                                }
+                            }
                         }
-                        Request::Set(key, value) => {
-                            database.set(key, value);
-
-                            let _ = connection.respond(Response::Ok).await;
+                    } else {
+                        if let Ok(request) = connection.accept().await {
+                            Self::handle_request(request, &mut connection, &database, &mut channel)
+                                .await;
+                        } else {
+                            break;
                         }
-                        Request::Delete(key) => {
-                                let response = if database.delete(&key) {Response::Ok} else {Response::NotFound};
-
-                            let _ = connection.respond(response).await;
-                        }
-                        _ => todo!()
                     }
                 }
             });
         }
     }
+
+    async fn handle_request(
+        request: Request,
+        connection: &mut Connection,
+        database: &Database,
+        channel: &mut Channel,
+    ) {
+        let response = match request {
+            Request::Ping => Response::Pong,
+            Request::Get(key) => {
+                if let Some(data) = database.get(&key) {
+                    Response::Get(data)
+                } else {
+                    Response::NotFound
+                }
+            }
+            Request::Set(key, value) => {
+                database.set(key, value);
+
+                Response::Ok
+            }
+            Request::Delete(key) => {
+                if database.delete(&key) {
+                    Response::Ok
+                } else {
+                    Response::NotFound
+                }
+            }
+            Request::Publish(id, message) => {
+                if database.publish(id, message) {
+                    Response::Ok
+                } else {
+                    Response::NotFound
+                }
+            }
+            Request::Subscribe(id) => {
+                *channel = Some(database.subscribe(id));
+
+                Response::Ok
+            }
+            Request::Unsubscribe(id) => {
+                *channel = None;
+
+                database.unsubscribe(id);
+
+                Response::Ok
+            }
+        };
+
+        let _ = connection.respond(response).await;
+    }
 }
+
+type Channel = Option<Receiver<Vec<u8>>>;
