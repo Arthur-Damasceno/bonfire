@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 use tokio::{
     net::{TcpListener, ToSocketAddrs},
     select,
@@ -6,6 +7,7 @@ use tokio::{
 
 use crate::{
     database::Database,
+    error::{Result, Error},
     protocol::{Channel, Connection, Request, Response},
 };
 
@@ -14,13 +16,13 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn bind(addr: impl ToSocketAddrs) -> crate::Result<Self> {
+    pub async fn bind(addr: impl ToSocketAddrs) -> Result<Self> {
         let listener = TcpListener::bind(addr).await?;
 
         Ok(Self { listener })
     }
 
-    pub async fn start(&self) -> crate::Result {
+    pub async fn start(&self) -> Result {
         let database = Arc::new(Database::default());
 
         loop {
@@ -37,14 +39,23 @@ impl Server {
                 loop {
                     select! {
                         request = connection.accept() => {
-                            if let Ok(request) = request {
-                                let _ = Self::handle_request(&mut connection, &database, &mut channel, request).await;
-                            } else {
-                                break;
+                            match request {
+                                Ok(request) => {
+                                    if let Err(err) = Self::handle_request(&mut connection, &database, &mut channel, request).await {
+                                        eprintln!("{err}");
+                                    }
+                                }
+                                Err(Error::Disconnect) => {
+                                    println!("Disconnecting from {addr}");
+                                    break;
+                                },
+                                Err(err) => eprintln!("{err}"),
                             }
                         }
                         message = channel.recv() => {
-                            let _ = connection.respond(Response::Message(message)).await;
+                            if let Err(err) = connection.respond(Response::Message(message)).await {
+                                eprintln!("{err}");
+                            }
                         }
                     }
                 }
@@ -57,7 +68,7 @@ impl Server {
         database: &Database,
         channel: &mut Channel,
         request: Request,
-    ) -> crate::Result {
+    ) -> Result {
         let response = match request {
             Request::Ping => Response::Pong,
             Request::Get(key) => {

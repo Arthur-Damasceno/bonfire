@@ -1,4 +1,5 @@
 use std::time::Duration;
+
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -6,7 +7,7 @@ use tokio::{
     time::sleep,
 };
 
-use crate::database::Database;
+use crate::{database::Database, error::Result};
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -63,7 +64,7 @@ impl Connection {
         Self(stream)
     }
 
-    pub async fn accept(&mut self) -> crate::Result<Request> {
+    pub async fn accept(&mut self) -> Result<Request> {
         let kind = self.0.read_u8().await?;
 
         match kind {
@@ -115,7 +116,7 @@ impl Connection {
         }
     }
 
-    pub async fn respond(&mut self, response: Response) -> crate::Result {
+    pub async fn respond(&mut self, response: Response) -> Result {
         self.0.write_u8(response.kind()).await?;
 
         if let Response::Get(data) | Response::Message(data) = response {
