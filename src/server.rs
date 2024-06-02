@@ -7,7 +7,7 @@ use tokio::{
 
 use crate::{
     database::Database,
-    error::{Result, Error},
+    error::{Error, Result},
     protocol::{Channel, Connection, Request, Response},
 };
 

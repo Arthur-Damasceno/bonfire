@@ -28,6 +28,18 @@ impl Request {
     pub const PUBLISH: u8 = 4;
     pub const SUBSCRIBE: u8 = 5;
     pub const UNSUBSCRIBE: u8 = 6;
+
+    pub fn kind(&self) -> u8 {
+        match self {
+            Self::Ping => Self::PING,
+            Self::Get(_) => Self::GET,
+            Self::Set(_, _) => Self::SET,
+            Self::Delete(_) => Self::DELETE,
+            Self::Publish(_, _) => Self::PUBLISH,
+            Self::Subscribe(_) => Self::SUBSCRIBE,
+            Self::Unsubscribe => Self::UNSUBSCRIBE,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
