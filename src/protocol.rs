@@ -7,7 +7,10 @@ use tokio::{
     time::sleep,
 };
 
-use crate::{database::Database, error::Result};
+use crate::{
+    database::Database,
+    error::{Error, Result},
+};
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -39,6 +42,55 @@ impl Request {
             Self::Subscribe(_) => Self::SUBSCRIBE,
             Self::Unsubscribe => Self::UNSUBSCRIBE,
         }
+    }
+}
+
+impl TryFrom<&str> for Request {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self> {
+        let mut args = value.split_whitespace();
+
+        let kind = args.next().ok_or(Error::Parse).and_then(|kind| {
+            match kind.to_ascii_uppercase().as_str() {
+                "PING" | "P" => Ok(Self::PING),
+                "GET" | "G" => Ok(Self::GET),
+                "SET" | "S" => Ok(Self::SET),
+                "DELETE" | "D" => Ok(Self::DELETE),
+                "PUBLISH" | "PUB" => Ok(Self::PUBLISH),
+                "SUBSCRIBE" | "SUB" => Ok(Self::SUBSCRIBE),
+                "UNSUBSCRIBE" | "UNSUB" => Ok(Self::UNSUBSCRIBE),
+                _ => Err(Error::Parse),
+            }
+        })?;
+
+        Ok(match kind {
+            Self::PING => Self::Ping,
+            Self::GET => {
+                let key = args.next().ok_or(Error::Parse)?.as_bytes().to_vec();
+                Self::Get(key)
+            }
+            Self::SET => {
+                let key = args.next().ok_or(Error::Parse)?.as_bytes().to_vec();
+                let value = args.next().ok_or(Error::Parse)?.as_bytes().to_vec();
+                Self::Set(key, value)
+            }
+            Self::DELETE => {
+                let key = args.next().ok_or(Error::Parse)?.as_bytes().to_vec();
+                Self::Delete(key)
+            }
+            Self::PUBLISH => {
+                let id = args.next().ok_or(Error::Parse).map(|id| id.parse())??;
+                let data = args.next().ok_or(Error::Parse)?.as_bytes().to_vec();
+                Self::Publish(id, data)
+            }
+            Self::SUBSCRIBE => {
+                let id = args.next().ok_or(Error::Parse).map(|id| id.parse())??;
+                Self::Subscribe(id)
+            }
+            Self::UNSUBSCRIBE => Self::Unsubscribe,
+            _ => unreachable!(),
+        })
     }
 }
 

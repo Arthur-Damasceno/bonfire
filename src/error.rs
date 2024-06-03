@@ -1,4 +1,7 @@
-use std::io::{self, ErrorKind};
+use std::{
+    io::{self, ErrorKind},
+    num::ParseIntError,
+};
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
@@ -8,6 +11,8 @@ pub enum Error {
     Io(#[source] io::Error),
     #[error("The peer has disconnect")]
     Disconnect,
+    #[error("Cannot parse the data")]
+    Parse,
 }
 
 impl From<io::Error> for Error {
@@ -17,5 +22,11 @@ impl From<io::Error> for Error {
         }
 
         Self::Io(err)
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(_: ParseIntError) -> Self {
+        Self::Parse
     }
 }

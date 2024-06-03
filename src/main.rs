@@ -4,9 +4,11 @@ mod error;
 mod protocol;
 mod server;
 
-use std::{env::var, process::exit};
+use std::{env::var, io::stdin, process::exit};
 
-use {client::Client, error::Result, server::Server};
+use tokio::{select, task::spawn_blocking};
+
+use {client::Client, error::Result, protocol::Request, server::Server};
 
 const ADDR: &str = "127.0.0.1:6530";
 
@@ -31,7 +33,25 @@ async fn server() -> Result {
 }
 
 async fn client() -> Result {
-    let _client = Client::connect(ADDR).await?;
+    let mut client = Client::connect(ADDR).await?;
 
-    todo!()
+    loop {
+        select! {
+            response = client.recv() => {
+                println!("{:?}", response?);
+            }
+            request = spawn_blocking(|| {
+                let mut data = String::new();
+                stdin().read_line(&mut data).unwrap();
+                data
+            }) => {
+                if let Ok(request) = Request::try_from(request.unwrap().as_str()) {
+                    let response = client.request(&request).await?;
+                    println!("{response:?}");
+                } else {
+                    eprintln!("Cannot parse request");
+                }
+            }
+        }
+    }
 }
