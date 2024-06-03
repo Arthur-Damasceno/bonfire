@@ -61,12 +61,12 @@ async fn client(addr: SocketAddr) -> Result {
     loop {
         select! {
             response = client.recv() => {
-                println!("{:?}", response?);
+                println!("{}", response?);
             }
             request = spawn_blocking(read_line) => {
                 if let Ok(request) = Request::try_from(request.unwrap().as_str()) {
                     let response = client.request(&request).await?;
-                    println!("{response:?}");
+                    println!("{response}");
                 } else {
                     eprintln!("Cannot parse request");
                 }

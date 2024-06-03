@@ -1,4 +1,7 @@
-use std::time::Duration;
+use std::{
+    fmt::{self, Display},
+    time::Duration,
+};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -117,6 +120,24 @@ impl Response {
             Self::NotFound => Self::NOT_FOUND,
             Self::Get(_) => Self::GET,
             Self::Message(_) => Self::MESSAGE,
+        }
+    }
+}
+
+impl Display for Response {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Pong => write!(f, "Pong!"),
+            Self::Ok => write!(f, "The request was successful!"),
+            Self::NotFound => write!(f, "The resource was not found!"),
+            Self::Get(data) => match String::from_utf8(data.to_owned()) {
+                Ok(data) => write!(f, "{data}"),
+                Err(_) => write!(f, "Bytes: {data:?}"),
+            },
+            Self::Message(data) => match String::from_utf8(data.to_owned()) {
+                Ok(data) => write!(f, "Message: {data}"),
+                Err(_) => write!(f, "Message bytes: {data:?}"),
+            },
         }
     }
 }
